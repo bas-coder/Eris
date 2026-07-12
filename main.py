@@ -79,7 +79,7 @@ def run_platform_core(mode: str = "train") -> None:
             # ---> PASTE YOUR DATABENTO API KEY IN THE QUOTES BELOW <---
             # We start with 1 week of data to ensure the download pipeline is flawless before pulling months of data.
             market_data = fetch_historical_ticks(
-                api_key="db-KkSkPV9VLhKP34Miu8ASX9FCCpt6F", 
+                api_key=os.getenv('DATABENTO_KEY'), 
                 start_date="2024-01-01", 
                 end_date="2024-01-07",
                 symbol="6EH4" # CME Euro FX Futures March 2024 Contract (Highly liquid EUR/USD proxy)
