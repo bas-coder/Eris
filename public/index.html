@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Command Center</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        accent: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [logs, setLogs] = useState([]);
+            const [stats, setStats] = useState({});
+            const [loading, setLoading] = useState(true);
+
+            const fetchData = async () => {
+                try {
+                    const logsRes = await fetch('/api/logs');
+                    const logsData = await logsRes.json();
+                    if (!logsData.error) setLogs(logsData);
+
+                    const statsRes = await fetch('/api/stats');
+                    const statsData = await statsRes.json();
+                    setStats(statsData);
+                    
+                    setLoading(false);
+                } catch (err) {
+                    console.error("Failed to fetch dashboard data:", err);
+                }
+            };
+
+            // Poll the backend every 2 seconds for live updates
+            useEffect(() => {
+                fetchData();
+                const interval = setInterval(fetchData, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="min-h-screen p-6 flex flex-col gap-6">
+                    {/* Header */}
+                    <header className="flex justify-between items-center glass-panel p-6 rounded-2xl shadow-xl">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                                <i data-lucide="cpu" className="w-8 h-8 text-blue-400"></i>
+                                Autonomous Supervisor
+                            </h1>
+                            <p className="text-gray-400 mt-1">Real-time Reinforcement Learning Telemetry (EUR/USD)</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-sm font-medium text-emerald-400 uppercase tracking-wider">System Online</span>
+                        </div>
+                    </header>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {[
+                            { label: "Win Rate", value: stats.win_rate || "--", icon: "target", color: "text-blue-400" },
+                            { label: "Profit Factor", value: stats.profit_factor || "--", icon: "trending-up", color: "text-emerald-400" },
+                            { label: "Trades Executed", value: stats.total_trades || "--", icon: "activity", color: "text-purple-400" },
+                            { label: "Current Regime", value: stats.active_regime || "--", icon: "bar-chart-2", color: "text-amber-400", size: "text-lg" }
+                        ].map((stat, i) => (
+                            <div key={i} className="glass-panel p-6 rounded-2xl flex flex-col gap-2 shadow-lg hover:bg-slate-800/50 transition-colors">
+                                <div className="flex justify-between items-start">
+                                    <span className="text-sm text-gray-400 font-medium">{stat.label}</span>
+                                    <i data-lucide={stat.icon} className={`w-5 h-5 ${stat.color}`}></i>
+                                </div>
+                                <span className={`font-bold ${stat.size || 'text-3xl'} text-white`}>{stat.value}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Live Terminal Ledger */}
+                    <div className="glass-panel rounded-2xl shadow-xl flex-1 flex flex-col overflow-hidden border-t-4 border-t-blue-500">
+                        <div className="p-4 border-b border-gray-700 bg-slate-800/50 flex justify-between items-center">
+                            <h2 className="text-lg font-semibold flex items-center gap-2">
+                                <i data-lucide="terminal" className="w-5 h-5"></i>
+                                Live Trading Ledger
+                            </h2>
+                        </div>
+                        <div className="p-0 overflow-y-auto custom-scrollbar h-[500px]">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-800/80 sticky top-0 backdrop-blur-md">
+                                    <tr>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Timestamp</th>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Event</th>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Symbol</th>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Price / Size</th>
+                                        <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Agent Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-800 font-mono text-sm">
+                                    {loading ? (
+                                        <tr><td colSpan="6" className="p-8 text-center text-gray-500">Initializing secure connection...</td></tr>
+                                    ) : logs.length === 0 ? (
+                                        <tr><td colSpan="6" className="p-8 text-center text-gray-500">No journal logs detected yet. Run main.py.</td></tr>
+                                    ) : logs.map((log) => (
+                                        <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                                            <td className="p-4 text-gray-400">{log.timestamp}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-md text-xs font-bold ${
+                                                    log.event_type === 'TRADE_EXECUTION' ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-800' :
+                                                    'bg-amber-900/50 text-amber-400 border border-amber-800'
+                                                }`}>
+                                                    {log.event_type}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 font-bold">{log.symbol}</td>
+                                            <td className={`p-4 font-bold ${log.action === 'BUY' ? 'text-emerald-400' : log.action === 'SELL' ? 'text-rose-400' : 'text-gray-400'}`}>
+                                                {log.action}
+                                            </td>
+                                            <td className="p-4">
+                                                {log.action !== 'HOLD' ? (
+                                                    <div>
+                                                        <span className="text-white">{log.price.toFixed(5)}</span>
+                                                        <span className="text-gray-500 ml-2">({log.lots} Lots)</span>
+                                                    </div>
+                                                ) : <span className="text-gray-600">--</span>}
+                                            </td>
+                                            <td className="p-4 text-gray-400 max-w-md truncate" title={log.reason}>{log.reason}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        
+        // Initialize Lucide icons after render
+        setTimeout(() => lucide.createIcons(), 100);
+    </script>
+</body>
+</html>

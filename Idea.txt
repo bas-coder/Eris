@@ -1,0 +1,26 @@
+I want to build a POWERFUL Forex trading bot/student that is capable of self development/improvement. I strongly believe that the forex world is a numbers game and if we have a bot that is capable of immediate self-repair/improvement then it would only be a matter of time/simulations.
+
+First we'll find a profitable trading strategy online (preferably scalping) that has been explained in ruthless detail.
+
+We'll build a powerful trading bot, the scalping strategy will serve as a base mode-of-operation for the bot. 
+
+Now to the good part, every day the bot trades, it's actually training, learning and refining its actions to become world class.
+- Ruthlessly observing the forex market, 
+- Has NO emotions and is great with numbers.
+- Taking note of reoccurrences and uses the observation in future trades
+- When it loses, it notes down the mistakes to ensure they never happen again. (Keeps a trading journal)
+- Even when it wins, it tries to understand why. It will add this to its self development journal. So it would do its best to replicate that scenario.
+
+It will be the greatest forex trading student ever liveth and hence the most profitable.
+
+It must run 24/7. Use whatever tech stack required. 
+We either find a good broker that doesn't mind the actions of the student OR the student must behave in such a way that it won't flag the attention of the broker or break their rules. If there is another way then great
+
+Its main goal is to win, to scalp and come out with profit everyday.
+
+It must be super fast, in thinking and in execution. Nano second stuff.
+
+We must find a good broker whose demo accounts are perfect replicas of its live accounts or could be configured to be. The conditions must be perfect. So that when the student has become the master we'll unleash it on a live account.
+
+Most traders today became profitable by being disciplined to keep doing the same thing (replicating the same actions based on certain conditions) over a long period of time. 
+They call this separating success from luck. So A trade that hit its stop-loss but followed every rule in their checklist perfectly is marked as a "good trade." A trade that made $5,000 but broke a rule (like over-leveraging or chasing the market) is explicitly marked as a "bad trade" because the profit was unreplicable. Do you think this is smart??? I strongly believe our bot will 100x better than a human and will understand the market-makers (I believe they also use bots) modus-operandi in a month of training/learning/trading  100x better than a pro trader. We wouldn't know until we try. Why say you.
