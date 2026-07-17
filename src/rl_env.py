@@ -13,30 +13,26 @@ import numpy as np
 import pandas as pd
 
 # =====================================================================
-# WINDOWS SSL CORRUPTION MONKEY-PATCH
+# WINDOWS SSL CORRUPTION MONKEY-PATCH (RUTHLESS EDITION)
 # =====================================================================
-# This patch intercepts Python's default SSL context establishment. 
-# If your local Windows certificate store throws an ASN1 parsing error 
-# (e.g., [ASN1: NOT_ENOUGH_DATA]), this bypasses the bad registry entry 
-# and defaults to the standard 'certifi' security bundle to prevent crashes.
+# This intercepts the root cause of the [ASN1: NOT_ENOUGH_DATA] error 
+# across ALL libraries (aiohttp, requests, HuggingFace) by patching 
+# the underlying context loader itself.
 # =====================================================================
-_orig_create_default_context = ssl.create_default_context
+_orig_load_default_certs = ssl.SSLContext.load_default_certs
 
-def _safe_create_default_context(purpose=ssl.Purpose.SERVER_AUTH, *, cafile=None, capath=None, cadata=None):
+def _safe_load_default_certs(self, purpose=ssl.Purpose.SERVER_AUTH):
     try:
-        return _orig_create_default_context(purpose=purpose, cafile=cafile, capath=capath, cadata=cadata)
+        _orig_load_default_certs(self, purpose)
     except ssl.SSLError:
-        print("[SYSTEM] Bypassing corrupted Windows SSL Store to keep bot alive...")
-        context = ssl.SSLContext(purpose)
+        print("[SYSTEM] Bypassing corrupted Windows SSL Store for all network requests...")
         try:
             import certifi
-            context.load_verify_locations(cafile=certifi.where())
+            self.load_verify_locations(cafile=certifi.where())
         except ImportError:
-            # Absolute fallback if certifi is not locally present
-            context.verify_mode = ssl.CERT_NONE
-        return context
+            pass
 
-ssl.create_default_context = _safe_create_default_context
+ssl.SSLContext.load_default_certs = _safe_load_default_certs
 # =====================================================================
 
 try:
@@ -158,16 +154,41 @@ class EurUsdScalpingEnv(gym.Env):
         info = {"tick_index": self.current_step}
         
         reward = 0.0
-        vwap_dev = obs[1]
+        current_price = obs[0]
+        vwap_deviation = obs[1] # Negative if price is BELOW VWAP, Positive if ABOVE VWAP
         
-        # Evaluation Logic: Positive rewards are assigned if the bot's position 
-        # aligns with taking a mean-reverting fade back to our anchored VWAP center line.
-        if action == 1:  # Buy Decision
-            reward = float(-vwap_dev * 10000.0)
-        elif action == 2:  # Sell Decision
-            reward = float(vwap_dev * 10000.0)
-        else:  # Hold / Flat
-            reward = 0.0
+        # =========================================================================
+        # THE MASTER's CURRICULUM: VWAP LIQUIDITY SWEEP REWARD FUNCTION
+        # =========================================================================
+        
+        # We define a "significant deviation" as 5 pips (0.00050) away from VWAP
+        significant_deviation = 0.00050 
+
+        if action == 1:  # BUY DECISION
+            if vwap_deviation < -significant_deviation:
+                # PERFECT TRADE: Buying a deep dip below VWAP (Sweeping liquidity)
+                reward = 100.0
+            elif vwap_deviation > 0:
+                # FATAL ERROR: Buying when price is already above VWAP (Chasing)
+                reward = -100.0 
+            else:
+                # Mediocre trade: Buying slightly below VWAP
+                reward = 10.0
+                
+        elif action == 2:  # SELL DECISION
+            if vwap_deviation > significant_deviation:
+                # PERFECT TRADE: Selling a massive spike above VWAP
+                reward = 100.0
+            elif vwap_deviation < 0:
+                # FATAL ERROR: Selling when price is already below VWAP (Panic selling)
+                reward = -100.0
+            else:
+                # Mediocre trade: Selling slightly above VWAP
+                reward = 10.0
+                
+        else:  # HOLD / FLAT
+            # Small penalty to discourage the bot from doing absolutely nothing forever
+            reward = -0.1
             
         return obs, reward, terminated, truncated, info
 

@@ -2,7 +2,7 @@
 Platform Architecture: Master Orchestration Conductor Loop
 Workspace: Eris
 Environment: Conda fx39 (Python 3.9 win-64)
-Dependencies: stable-baselines3, pandas, numpy, torch (CPU)
+Dependencies: stable-baselines3, pandas, numpy, torch (CPU), python-dotenv
 """
 
 import os
@@ -11,6 +11,13 @@ import time
 import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
+from dotenv import load_dotenv
+
+# ==========================================================
+# SECURE ENVIRONMENT INJECTION
+# Loads the hidden .env file so API keys are never hardcoded.
+# ==========================================================
+load_dotenv()
 
 # Internal Module Imports
 from src.rl_env import EurUsdScalpingEnv, fetch_historical_ticks
@@ -76,12 +83,16 @@ def run_platform_core(mode: str = "train") -> None:
     if mode == "train":
         print("[DATA] Connecting to Databento for historical tick matrices...")
         try:
-            # ---> PASTE YOUR DATABENTO API KEY IN THE QUOTES BELOW <---
-            # We start with 1 week of data to ensure the download pipeline is flawless before pulling months of data.
+            db_key = os.getenv("DATABENTO_KEY")
+            
+            # Fail-safe to ensure the .env file is actually being read
+            if not db_key:
+                raise ValueError("DATABENTO_KEY is completely missing from the hidden .env file.")
+
             market_data = fetch_historical_ticks(
-                api_key=os.getenv('DATABENTO_KEY'), 
-                start_date="2024-01-01", 
-                end_date="2024-01-07",
+                api_key=db_key, 
+                start_date="2024-01-02T00:00:00", 
+                end_date="2024-01-03T00:00:00",
                 symbol="6EH4" # CME Euro FX Futures March 2024 Contract (Highly liquid EUR/USD proxy)
             )
             print(f"[DATA] Successfully fetched {len(market_data)} real market ticks from Databento.")
@@ -119,7 +130,7 @@ def run_platform_core(mode: str = "train") -> None:
         )
         
         print("[RIGHT BRAIN] Executing model policy optimization training cycles...")
-        model.learn(total_timesteps=20000) # Baseline convergence trial scaling
+        model.learn(total_timesteps=500000) # Baseline convergence trial scaling
         model.save(model_path)
         print(f"[RIGHT BRAIN] Training successfully finalized. Model weights committed to: {model_path}")
         
@@ -134,86 +145,99 @@ def run_platform_core(mode: str = "train") -> None:
         print("[RIGHT BRAIN] Initializing predictive frozen weights context...")
         model = PPO.load(model_path)
         
-        obs, info = env.reset()
-        done = False
-        step_idx = 0
+        print("[SYSTEM] Platform loop online. Transitioning to Live Real-Time Execution...")
         
-        print("[SYSTEM] Platform loop online. Awaiting data stream interrupts...")
-        
-        # Real-time ticking mock evaluation loop
-        while not done and step_idx < 100:
-            # Predict best directional action step using frozen RL weights
-            action, _states = model.predict(obs, deterministic=True)
-            action = int(action)
-            
-            # Fetch environmental metrics from current step vector
-            current_price = float(obs[0])
-            current_spread = float(obs[2])
-            
-            # Simulated ping variable proxy for retail vs institutional checks
-            mock_ping_ms = int(np.random.randint(10, 25)) 
-            
-            if action != 0: # 1 = BUY, 2 = SELL
-                # Left Brain validation pass before transaction commitment
-                is_safe, risk_msg = math_engine.assert_risk_guardrails(
-                    current_spread=current_spread, 
-                    current_ping=mock_ping_ms
-                )
+        # ---------------------------------------------------------
+        # TRUE AUTONOMOUS LIVE EXECUTION LOOP
+        # ---------------------------------------------------------
+        tick_counter = 0
+        try:
+            while True:
+                # 1. FETCH REAL-TIME SENSES
+                # -> In a full production deployment, this is where you query your broker's live WebSocket.
+                # -> For now, we mock the real-time tick to keep the loop operational and streaming to your UI.
                 
-                if is_safe:
-                    # Dynamically compute target position size using account mathematical equity
-                    simulated_stop_loss = current_price - 0.00150 if action == 1 else current_price + 0.00150
-                    calculated_lots = math_engine.calculate_precise_lots(
-                        entry_price=current_price,
-                        stop_loss_price=simulated_stop_loss
-                    )
-                    
+                # INJECTING ARTIFICIAL VOLATILITY TO TEST THE BOT'S DISCIPLINE
+                tick_counter += 1
+                if tick_counter % 30 == 0:
+                    current_price = 1.08500 - 0.00060 # Massive 6-pip dip (Bot should BUY)
+                elif tick_counter % 50 == 0:
+                    current_price = 1.08500 + 0.00060 # Massive 6-pip spike (Bot should SELL)
+                else:
+                    current_price = 1.08500 + np.random.normal(0, 0.0001) # Normal 1-pip noise (Bot should HOLD)
+                
+                current_spread = 0.00005 # 0.5 pips
+                current_ping_ms = int(np.random.randint(5, 25))
+                
+                # NLP execution (in production, this reads the latest Reuters/Bloomberg headline)
+                live_sentiment = nlp_engine.analyze_headline("No major news.") 
+                
+                # Approximate VWAP calculation logic for the live stream
+                current_vwap = 1.08500 
+                vwap_deviation = current_price - current_vwap
+                
+                # 2. CONSTRUCT THE STATE VECTOR FOR THE BRAIN
+                live_obs = np.array([current_price, vwap_deviation, current_spread, live_sentiment], dtype=np.float32)
+                
+                # 3. PREDICT BEST ACTION (0=Hold, 1=Buy, 2=Sell)
+                action, _states = model.predict(live_obs, deterministic=True)
+                action = int(action)
+                
+                # 4. EXECUTION & RISK MANAGEMENT
+                if action != 0:
                     action_str = "BUY" if action == 1 else "SELL"
                     
-                    if calculated_lots > 0:
-                        # Log clearance to structural system telemetry ledger
+                    is_safe, risk_msg = math_engine.assert_risk_guardrails(
+                        current_spread=current_spread, 
+                        current_ping=current_ping_ms
+                    )
+                    
+                    if is_safe:
+                        simulated_stop_loss = current_price - 0.00150 if action == 1 else current_price + 0.00150
+                        calculated_lots = math_engine.calculate_precise_lots(
+                            entry_price=current_price,
+                            stop_loss_price=simulated_stop_loss
+                        )
+                        
+                        if calculated_lots > 0:
+                            journal.log_event(
+                                event_type="TRADE_EXECUTION",
+                                symbol="EUR/USD",
+                                action=action_str,
+                                price=current_price,
+                                lots=calculated_lots,
+                                reason=risk_msg
+                            )
+                            print(f"[EXECUTE] Signal Verified. Dispatching {action_str} {calculated_lots} Lots at {current_price:.5f}")
+                            
+                            # Transmit via FIX
+                            if fix_app and fix_app.is_logged_on:
+                                fix_app.execute_market_order("EUR/USD", action, calculated_lots)
+                    else:
+                        # Risk desk override
                         journal.log_event(
-                            event_type="TRADE_EXECUTION",
+                            event_type="TRADE_REJECTED",
                             symbol="EUR/USD",
-                            action=action_str,
+                            action="HOLD",
                             price=current_price,
-                            lots=calculated_lots,
+                            lots=0.0,
                             reason=risk_msg
                         )
-                        print(f"[EXECUTE] Order Dispatched: {action_str} {calculated_lots} Lots at {current_price:.5f}")
-                        
-                        # Direct interaction with the open network socket if connected live
-                        if fix_app and fix_app.is_logged_on:
-                            fix_app.execute_market_order("EUR/USD", action, calculated_lots)
-                else:
-                    # The risk manager successfully blocks execution due to adverse metrics
-                    journal.log_event(
-                        event_type="TRADE_REJECTED",
-                        symbol="EUR/USD",
-                        action="HOLD",
-                        price=current_price,
-                        lots=0.0,
-                        reason=risk_msg
-                    )
-                    print(f"[REJECTED] Left Brain Overrode Signal. Reason: {risk_msg}")
-            
-            # Progress environment tick state forward
-            obs, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
-            step_idx += 1
-            time.sleep(0.01) # Execution pace limiter to protect thread cycle consumption
-            
-        print("[SYSTEM] Operational evaluation routine completed safely.")
-        
-    if fix_initiator:
-        print("[SYSTEM] Shutting down network initiator sockets safely...")
-        fix_initiator.stop()
-
+                        print(f"[REJECTED] Signal Vetoed by Left Brain. Reason: {risk_msg}")
+                
+                # Execution pace limiter. Runs 10 times a second.
+                time.sleep(0.1) 
+                
+        except KeyboardInterrupt:
+            print("\n[SYSTEM] Manual override detected. Safely powering down execution layers...")
+        finally:
+            if fix_initiator:
+                print("[SYSTEM] Shutting down network initiator sockets safely...")
+                fix_initiator.stop()
 
 if __name__ == "__main__":
-    # Standard operational run pipeline
-    # Phase A: Train the core brain parameters
-    run_platform_core(mode="train")
+    # To run the student purely in LIVE mode using the trained brain:
+    # (Notice how I commented out the 'train' phase below)
+    # run_platform_core(mode="train")
     
-    # Phase B: Route the trained model down to structural execution validation layers
     run_platform_core(mode="live")
